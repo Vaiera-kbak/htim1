@@ -1,135 +1,193 @@
-import numpy as np
-import pandas as pd
-from nupic.frameworks.opf.model_factory import ModelFactory
-from nupic.encoders import MultiEncoder, ScalarEncoder, DateEncoder
-from nupic.data.inference_shifter import InferenceShifter
-
-def create_htm_model():
-    """Создает и конфигурирует HTM модель"""
-    model_params = {
-        "model": "HTMPrediction",
-        "version": 1,
-        "predictAheadTime": None,
-        "modelParams": {
-            "inferenceType": "TemporalMultiStep",
-            "sensorParams": {
-                "verbosity": 0,
-                "encoders": {
-                    "timestamp": {
-                        "fieldname": "timestamp",
-                        "name": "timestamp",
-                        "type": "DateEncoder",
-                        "timeOfDay": (21, 9.5),
-                        "dayOfWeek": (21, 1),
-                    },
-                    "value": {
-                        "fieldname": "value",
-                        "name": "value",
-                        "type": "ScalarEncoder",
-                        "minval": 0,
-                        "maxval": 100,
-                        "clipInput": True,
-                        "w": 21,
-                        "n": 1024,
-                    }
-                },
-            },
-            "spEnable": True,
-            "spParams": {
-                "spatialImp": "cpp",
-                "globalInhibition": 1,
-                "columnCount": 2048,
-                "inputWidth": 0,
-                "numActiveColumnsPerInhArea": 40,
-                "seed": 1956,
-                "potentialPct": 0.8,
-                "synPermConnected": 0.1,
-                "synPermActiveInc": 0.0001,
-                "synPermInactiveDec": 0.0005,
-            },
-            "tmEnable": True,
-            "tmParams": {
-                "columnCount": 2048,
-                "cellsPerColumn": 32,
-                "inputWidth": 2048,
-                "seed": 1960,
-                "temporalImp": "cpp",
-                "newSynapseCount": 20,
-                "maxSynapsesPerSegment": 32,
-                "maxSegmentsPerCell": 128,
-                "initialPerm": 0.21,
-                "permanenceInc": 0.1,
-                "permanenceDec": 0.1,
-                "globalDecay": 0.0,
-                "maxAge": 0,
-                "minThreshold": 12,
-                "activationThreshold": 16,
-                "outputType": "normal",
-                "pamLength": 3,
-            },
-            "clParams": {
-                "regionName": "SDRClassifierRegion",
-                "clVerbosity": 0,
-                "alpha": 0.0001,
-                "steps": "1",
-            },
-        },
-    }
-    return ModelFactory.create(model_params)
-
-def generate_synthetic_data(num_records=500):
-    """Генерирует синтетические данные временного ряда"""
-    timestamps = pd.date_range(start="2023-01-01", periods=num_records, freq="H")
-    values = [50 + 30 * np.sin(i * 0.1) + 5 * np.random.randn() for i in range(num_records)]
-    return pd.DataFrame({"timestamp": timestamps, "value": values})
-
-def train_and_predict(model, data):
-    """Обучает модель и делает предсказания"""
-    shifter = InferenceShifter()
-    predictions = []
-    actuals = []
-    
-    for i, row in data.iterrows():
-        result = model.run({
-            "timestamp": row["timestamp"],
-            "value": row["value"]
-        })
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Обучение HTML - Основы веб-разработки</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
         
-        result = shifter.shift(result)
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem 0;
+            text-align: center;
+        }
         
-        prediction = result.inferences["multiStepBestPredictions"][1]
-        predictions.append(prediction)
-        actuals.append(row["value"])
+        nav {
+            background: #34495e;
+            padding: 0.5rem;
+        }
         
-        if i % 50 == 0:
-            print(f"Шаг {i}: Реальное = {row['value']:.2f}, Предсказанное = {prediction:.2f}")
+        nav ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+        
+        nav ul li {
+            margin: 0 1rem;
+        }
+        
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+        }
+        
+        main {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        
+        footer {
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 1rem 0;
+            margin-top: 2rem;
+        }
+        
+        .code-example {
+            background: #f4f4f4;
+            padding: 1rem;
+            border-left: 3px solid #2c3e50;
+            overflow-x: auto;
+        }
+        
+        @media (max-width: 600px) {
+            nav ul {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            nav ul li {
+                margin: 0.5rem 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Обучение HTML</h1>
+        <p>Основы веб-разработки для начинающих</p>
+    </header>
     
-    return actuals, predictions
-
-def calculate_metrics(actuals, predictions):
-    """Вычисляет метрики качества модели"""
-    actuals = np.array(actuals)
-    predictions = np.array(predictions)
-    mse = np.mean((actuals - predictions) ** 2)
-    mae = np.mean(np.abs(actuals - predictions))
-    print(f"\nМетрики качества:")
-    print(f"MSE: {mse:.4f}")
-    print(f"MAE: {mae:.4f}")
-
-def main():
-    # 1. Создаем модель
-    model = create_htm_model()
-    model.enableInference({"predictedField": "value"})
+    <nav>
+        <ul>
+            <li><a href="#intro">Введение</a></li>
+            <li><a href="#basics">Основы</a></li>
+            <li><a href="#elements">Элементы</a></li>
+            <li><a href="#forms">Формы</a></li>
+            <li><a href="#resources">Ресурсы</a></li>
+        </ul>
+    </nav>
     
-    # 2. Генерируем синтетические данные
-    data = generate_synthetic_data(500)
+    <main>
+        <section id="intro">
+            <h2>Введение в HTML</h2>
+            <p>HTML (HyperText Markup Language) - это стандартный язык разметки для создания веб-страниц.</p>
+            <p>HTML описывает структуру веб-страницы с помощью элементов, которые браузеры отображают как заголовки, абзацы, ссылки и т.д.</p>
+            
+            <div class="code-example">
+                <h3>Пример простой HTML-страницы:</h3>
+                <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;Моя первая страница&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Привет, мир!&lt;/h1&gt;
+    &lt;p&gt;Это моя первая HTML-страница.&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+            </div>
+        </section>
+        
+        <section id="basics">
+            <h2>Основы HTML</h2>
+            <p>Каждый HTML-документ состоит из элементов, которые обозначаются тегами.</p>
+            
+            <h3>Структура HTML-документа:</h3>
+            <ul>
+                <li><code>&lt;!DOCTYPE html&gt;</code> - объявление типа документа</li>
+                <li><code>&lt;html&gt;</code> - корневой элемент страницы</li>
+                <li><code>&lt;head&gt;</code> - содержит метаинформацию о странице</li>
+                <li><code>&lt;body&gt;</code> - содержит видимое содержимое страницы</li>
+            </ul>
+        </section>
+        
+        <section id="elements">
+            <h2>Основные HTML-элементы</h2>
+            
+            <h3>Заголовки:</h3>
+            <div class="code-example">
+                <pre><code>&lt;h1&gt;Заголовок 1 уровня&lt;/h1&gt;
+&lt;h2&gt;Заголовок 2 уровня&lt;/h2&gt;
+&lt;h3&gt;Заголовок 3 уровня&lt;/h3&gt;
+&lt;h4&gt;Заголовок 4 уровня&lt;/h4&gt;
+&lt;h5&gt;Заголовок 5 уровня&lt;/h5&gt;
+&lt;h6&gt;Заголовок 6 уровня&lt;/h6&gt;</code></pre>
+            </div>
+            
+            <h3>Абзацы и ссылки:</h3>
+            <div class="code-example">
+                <pre><code>&lt;p&gt;Это абзац текста.&lt;/p&gt;
+&lt;a href="https://example.com"&gt;Это ссылка&lt;/a&gt;</code></pre>
+            </div>
+            
+            <h3>Изображения:</h3>
+            <div class="code-example">
+                <pre><code>&lt;img src="image.jpg" alt="Описание изображения"&gt;</code></pre>
+            </div>
+        </section>
+        
+        <section id="forms">
+            <h2>HTML-формы</h2>
+            <p>Формы используются для сбора пользовательского ввода.</p>
+            
+            <div class="code-example">
+                <pre><code>&lt;form action="/submit" method="post"&gt;
+    &lt;label for="name"&gt;Имя:&lt;/label&gt;
+    &lt;input type="text" id="name" name="name"&gt;
     
-    # 3. Обучаем модель и делаем предсказания
-    print("Начало обучения и предсказаний...")
-    actuals, predictions = train_and_predict(model, data)
+    &lt;label for="email"&gt;Email:&lt;/label&gt;
+    &lt;input type="email" id="email" name="email"&gt;
     
-    # 4. Оцениваем качество модели
-    calculate_metrics(actuals, predictions)
-
-if __name__ == "__main__":
-    main()
+    &lt;label for="message"&gt;Сообщение:&lt;/label&gt;
+    &lt;textarea id="message" name="message"&gt;&lt;/textarea&gt;
+    
+    &lt;button type="submit"&gt;Отправить&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+            </div>
+        </section>
+        
+        <section id="resources">
+            <h2>Дополнительные ресурсы</h2>
+            <ul>
+                <li><a href="https://developer.mozilla.org/ru/docs/Web/HTML" target="_blank">MDN Web Docs - HTML</a></li>
+                <li><a href="https://html.spec.whatwg.org/" target="_blank">Официальная спецификация HTML</a></li>
+                <li><a href="https://www.w3schools.com/html/" target="_blank">W3Schools HTML Tutorial</a></li>
+            </ul>
+        </section>
+    </main>
+    
+    <footer>
+        <p>&copy; 2023 Обучение HTML. Все права защищены.</p>
+    </footer>
+</body>
+</html>
